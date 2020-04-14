@@ -147,38 +147,43 @@ class LearningSwitch (object):
 
     if packet.dst.is_multicast:
       flood() # 3a
+    
     else:
-      if packet.dst not in self.macToPort: # 4
-        flood("Port for %s unknown -- flooding" % (packet.dst,)) # 4a
-      else:
-        port = self.macToPort[packet.dst]
-        if port == event.port: # 5
-          # 5a
-          log.warning("Same port for packet from %s -> %s on %s.%s.  Drop."
-              % (packet.src, packet.dst, dpid_to_str(event.dpid), port))
-          drop(10)
-          return
-        # 6
+        h1_mac = '00:00:00:00:00:01'
+        mal_port = 2
+        if (packet.ethernet.dst == h1_mac):
+          log.debug("installing attack flow for %s.%i -> %s.%i" %
+          (packet.src, event.port, packet.dst, mal_port))
+          msg = of.ofp_flow_mod()
+          #msg.priority = 42
+          #msg.match.dl_type = 0x800
+          msg.match.dl_src = EthAddr(h1_mac)
+          # msg.match.tp_dst = 80
+          msg.actions.append(of.ofp_action_output(port = mal_port))
+          self.connection.send(msg)
 
-        # attack!!!
-        msg = of.ofp_flow_mod()
-        #msg.priority = 42
-        #msg.match.dl_type = 0x800
-        msg.match.dl_src = EthAddr('00:00:00:00:00:01')
-        # msg.match.tp_dst = 80
-        msg.actions.append(of.ofp_action_output(port = 2))
-        self.connection.send(msg)
-      
-
-        log.debug("installing flow for %s.%i -> %s.%i" %
-                  (packet.src, event.port, packet.dst, port))
-        msg = of.ofp_flow_mod()
-        msg.match = of.ofp_match.from_packet(packet, event.port)
-        msg.idle_timeout = 10
-        msg.hard_timeout = 30
-        msg.actions.append(of.ofp_action_output(port = port))
-        msg.data = event.ofp # 6a
-        self.connection.send(msg)
+        else:
+          if packet.dst not in self.macToPort: # 4
+            flood("Port for %s unknown -- flooding" % (packet.dst,)) # 4a
+          else:
+            port = self.macToPort[packet.dst]
+            if port == event.port: # 5
+              # 5a
+              log.warning("Same port for packet from %s -> %s on %s.%s.  Drop."
+                  % (packet.src, packet.dst, dpid_to_str(event.dpid), port))
+              drop(10)
+              return
+            # 6            
+          
+            log.debug("installing flow for %s.%i -> %s.%i" %
+                      (packet.src, event.port, packet.dst, port))
+            msg = of.ofp_flow_mod()
+            msg.match = of.ofp_match.from_packet(packet, event.port)
+            msg.idle_timeout = 10
+            msg.hard_timeout = 30
+            msg.actions.append(of.ofp_action_output(port = port))
+            msg.data = event.ofp # 6a
+            self.connection.send(msg)
 
 
 class l2_learning (object):
