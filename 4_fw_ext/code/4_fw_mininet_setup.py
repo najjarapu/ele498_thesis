@@ -4,7 +4,7 @@ from mininet.cli import CLI
 from mininet.log import setLogLevel, info
 
 def treeTopo():
-    net = Mininet( controller=RemoteController )
+    net = Mininet( controller=RemoteController, verbosity=debug )
     
     info( '*** Adding controller\n' )
     net.addController('c0')
