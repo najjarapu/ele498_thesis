@@ -24,6 +24,8 @@ import pox.openflow.libopenflow_01 as of
 from pox.lib.util import dpid_to_str, str_to_dpid
 from pox.lib.util import str_to_bool
 import time
+from pox.lib.revent import *
+from pox.lib.addresses import EthAddr
 
 log = core.getLogger()
 
