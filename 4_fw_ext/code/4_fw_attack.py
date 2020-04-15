@@ -132,8 +132,8 @@ class LearningSwitch (object):
     
     else:
         h1_mac = EthAddr('00:00:00:00:00:01')
-        mal_port = 2
-        if (packet.dst == h1_mac):
+        mal_port = event.port
+        if packet.dst == h1_mac and event.dpid == "00-00-00-00-00-02":
           log.debug("installing attack flow for %s.%i -> %s.%i" %
           (packet.src, event.port, packet.dst, mal_port))
           msg = of.ofp_flow_mod()
