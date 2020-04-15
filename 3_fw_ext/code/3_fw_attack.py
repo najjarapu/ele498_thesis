@@ -3,6 +3,8 @@
 # h2 could reead the contents of the pakcet and then then send it out
 # to h1 while spoofing sourcee MAC address of the original sender
 # this is all baked into a normal learning switch application 
+# sudo mn --controller remote --switch ovsk --topo single,3 --mac
+
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of

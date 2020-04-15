@@ -1,4 +1,5 @@
-
+# This code takes a simple tree and forces an infinite loop between two switches
+# sudo mn --controller remote --switch ovsk --topo tree,depth=2,fanout=2 --mac
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
