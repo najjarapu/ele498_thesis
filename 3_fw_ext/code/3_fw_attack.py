@@ -4,7 +4,7 @@
 # to h1 while spoofing sourcee MAC address of the original sender
 # this is all baked into a normal learning switch application 
 
-
+from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.util import dpid_to_str, str_to_dpid
 from pox.lib.util import str_to_bool
