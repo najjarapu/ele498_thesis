@@ -157,7 +157,7 @@ class LearningSwitch (object):
           msg = of.ofp_flow_mod()
           #msg.priority = 42
           #msg.match.dl_type = 0x800
-          msg.match.dl_src = EthAddr(h1_mac)
+          msg.match.dl_dst = h1_mac
           # msg.match.tp_dst = 80
           msg.actions.append(of.ofp_action_output(port = mal_port))
           self.connection.send(msg)
