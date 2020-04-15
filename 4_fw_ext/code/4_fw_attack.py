@@ -76,6 +76,8 @@ class LearningSwitch (object):
 
     packet = event.parsed
 
+    print("Switch asking for flow rule: %s", dpid_to_str(event.dpid))
+
     def flood (message = None):
       """ Floods the packet """
       msg = of.ofp_packet_out()
